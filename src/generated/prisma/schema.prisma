@@ -1,0 +1,247 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Auto Roles - Roles that are automatically assigned when a user joins the server
+model AutoRole {
+  id        String   @id @default(cuid())
+  guildId   String
+  roleId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([guildId, roleId])
+  @@index([guildId])
+  @@map("auto_roles")
+}
+
+// Reaction Roles - Roles assigned based on message reactions
+model ReactionRole {
+  id          String   @id @default(cuid())
+  guildId     String
+  channelId   String
+  messageId   String
+  emoji       String // Unicode emoji or custom emoji ID
+  roleId      String
+  mode        RoleMode @default(MULTIPLE) // SINGLE or MULTIPLE
+  description String? // Optional description for the role
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([messageId, emoji])
+  @@index([guildId])
+  @@index([messageId])
+  @@map("reaction_roles")
+}
+
+// Enum for reaction role modes
+enum RoleMode {
+  SINGLE // Users can only have one role from the message
+  MULTIPLE // Users can have multiple roles from the message
+}
+
+// Verification Configuration - Stores verification settings per guild
+model VerificationConfig {
+  id         String   @id @default(cuid())
+  guildId    String   @unique
+  roleId     String? // Role to assign when verified
+  difficulty String   @default("medium") // easy, medium, hard
+  question   String   @default("What is the capital of France?")
+  answers    String[] @default(["paris", "parís", "france"]) // Array of acceptable answers
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([guildId])
+  @@map("verification_config")
+}
+
+// Ticket System Configuration - Stores ticket settings per guild
+model TicketConfig {
+  id                   String           @id @default(cuid())
+  guildId              String           @unique
+  categoryChannelId    String? // Category where ticket channels are created
+  transcriptsChannelId String? // Channel where transcripts are posted
+  supportRoleIds       String[]         @default([]) // Roles that can view tickets
+  maxOpenTickets       Int              @default(3) // Max open tickets per user
+  autoCloseTime        Int?             @default(86400000) // Auto-close after 24h (ms)
+  welcomeMessage       String?          @default("Thank you for contacting support! A staff member will be with you shortly.")
+  closeMessage         String?          @default("This ticket has been closed. If you need further assistance, please open a new ticket.")
+  enableRatings        Boolean          @default(true)
+  enableTranscripts    Boolean          @default(true)
+  categories           TicketCategory[]
+  tickets              Ticket[]
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  @@index([guildId])
+  @@map("ticket_configs")
+}
+
+// Ticket Categories - Different types of tickets
+model TicketCategory {
+  id          String       @id @default(cuid())
+  guildId     String
+  name        String
+  emoji       String? // Emoji for the button
+  description String?
+  color       String       @default("#5865F2") // Hex color for embeds
+  config      TicketConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  configId    String
+  tickets     Ticket[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@unique([configId, name])
+  @@index([guildId])
+  @@map("ticket_categories")
+}
+
+// Tickets - Individual support tickets
+model Ticket {
+  id            String          @id @default(cuid())
+  guildId       String
+  channelId     String          @unique // The channel created for this ticket
+  userId        String // User who opened the ticket
+  username      String // Cached username
+  claimedBy     String? // Staff member who claimed the ticket
+  status        TicketStatus    @default(OPEN)
+  subject       String? // Optional subject/reason
+  category      TicketCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  categoryId    String?
+  config        TicketConfig    @relation(fields: [configId], references: [id], onDelete: Cascade)
+  configId      String
+  messages      TicketMessage[]
+  rating        TicketRating?
+  closedAt      DateTime?
+  closedBy      String? // User ID who closed the ticket
+  closedReason  String?
+  transcriptUrl String? // URL to transcript file
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([guildId])
+  @@index([userId])
+  @@index([status])
+  @@index([channelId])
+  @@map("tickets")
+}
+
+// Ticket Messages - For generating transcripts
+model TicketMessage {
+  id          String   @id @default(cuid())
+  ticketId    String
+  ticket      Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  userId      String
+  username    String
+  content     String   @db.Text
+  attachments String[] @default([]) // URLs to attachments
+  isStaff     Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([ticketId])
+  @@index([createdAt])
+  @@map("ticket_messages")
+}
+
+// Ticket Ratings - User feedback on support experience
+model TicketRating {
+  id        String   @id @default(cuid())
+  ticketId  String   @unique
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  rating    Int // 1-5 stars
+  feedback  String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([rating])
+  @@map("ticket_ratings")
+}
+
+// Enum for ticket status
+enum TicketStatus {
+  OPEN
+  CLAIMED
+  CLOSED
+}
+
+// Level System Configuration - XP and level settings per guild
+model LevelConfig {
+  id                String        @id @default(cuid())
+  guildId           String        @unique
+  enabled           Boolean       @default(true)
+  xpMin             Int           @default(15) // Min XP per message
+  xpMax             Int           @default(25) // Max XP per message
+  xpCooldown        Int           @default(60000) // Cooldown between XP gains (ms)
+  levelUpChannelId  String? // Channel for level up messages (null = same channel)
+  levelUpMessage    String        @default("🎉 Congratulations {user}! You've reached **Level {level}**!") // {user}, {level}, {xp} placeholders
+  ignoredChannelIds String[]      @default([]) // Channels where XP is not gained
+  ignoredRoleIds    String[]      @default([]) // Roles that don't gain XP
+  stackRoles        Boolean       @default(true) // Keep previous level roles or remove them
+  announceInDm      Boolean       @default(false) // Send level up message in DM
+  rewards           LevelReward[]
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([guildId])
+  @@map("level_configs")
+}
+
+// User Level Progress - XP and level data per user per guild
+model UserLevel {
+  id            String   @id @default(cuid())
+  guildId       String
+  userId        String
+  xp            Int      @default(0)
+  level         Int      @default(0)
+  totalMessages Int      @default(0)
+  lastMessageAt DateTime @default(now()) // For cooldown tracking
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([guildId, userId])
+  @@index([guildId])
+  @@index([userId])
+  @@index([level])
+  @@index([xp])
+  @@map("user_levels")
+}
+
+// Level Rewards - Roles given at specific levels
+model LevelReward {
+  id        String      @id @default(cuid())
+  guildId   String
+  level     Int
+  roleId    String
+  config    LevelConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  configId  String
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@unique([configId, level, roleId])
+  @@index([guildId])
+  @@index([level])
+  @@map("level_rewards")
+}
+
+// Server Stats Channel Configuration
+model StatsChannelConfig {
+  id                     String   @id @default(cuid())
+  guildId                String   @unique
+  categoryId             String? // Optional category to place stats channels
+  totalMembersChannelId  String?
+  humanMembersChannelId  String?
+  botMembersChannelId    String?
+  onlineMembersChannelId String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@index([guildId])
+  @@map("stats_channel_configs")
+}

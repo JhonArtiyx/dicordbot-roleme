@@ -1,0 +1,41 @@
+{
+  "name": "discordbot-roleme",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "A Discord bot built with Sapphire, Bun, and Prisma",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "start": "bun src/index.ts",
+    "build": "tsc",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "api:dev": "bun --watch src/api/index.ts",
+    "api:start": "bun src/api/index.ts",
+    "api:prod": "NODE_ENV=production bun src/api/index.ts"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.3.0",
+    "@prisma/client": "^7.3.0",
+    "@sapphire/framework": "^5.4.5",
+    "@types/pg": "^8.16.0",
+    "discord.js": "^14.14.0",
+    "dotenv": "^17.2.3",
+    "pg": "^8.17.2",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^25.1.0",
+    "@typescript-eslint/eslint-plugin": "^8.54.0",
+    "@typescript-eslint/parser": "^6.17.0",
+    "eslint": "^8.56.0",
+    "prettier": "^3.1.1",
+    "prisma": "^7.3.0",
+    "typescript": "^5.3.3"
+  }
+}

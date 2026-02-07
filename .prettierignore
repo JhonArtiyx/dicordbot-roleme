@@ -1,0 +1,62 @@
+# Dependencies
+node_modules/
+bun.lockb
+pnpm-lock.yaml
+yarn.lock
+package-lock.json
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Generated files
+src/generated/
+prisma/migrations/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+
+# Temporary files
+.cache/
+tmp/
+temp/
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml
+
+# Config files (keep original)
+.prettierrc.json
+.eslintrc.json
+tsconfig.json
+prisma.config.ts
+
+# Markdown files (often have special formatting)
+*.md
+README.md
+
+# JSON lock files
+*.lock
